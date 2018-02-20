@@ -1,11 +1,13 @@
+
 # Telebot
+
+golang-telegram-bot is a fork of [Telebot](https://github.com/tucnak/telebot)
+that aims to be more flexible and with webhook support.
+
 >"I never knew creating Telegram bots could be so _sexy_!"
 
-[![GoDoc](https://godoc.org/gopkg.in/tucnak/telebot.v2?status.svg)](https://godoc.org/gopkg.in/tucnak/telebot.v2)
-[![Travis](https://travis-ci.org/tucnak/telebot.svg?branch=v2)](https://travis-ci.org/tucnak/telebot)
-
 ```bash
-go get -u gopkg.in/tucnak/telebot.v2
+go get -u github.com/afusco/golang-telegram-bot
 ```
 
 * [Overview](#overview)
@@ -427,14 +429,6 @@ of `QueryResponse`.
 5. Commit: `git commit -m 'Add some feature'`
 6. Push: `git push origin my-new-feature`
 7. Pull request
-
-# Donate
-
-I do coding for fun but I also try to search for interesting solutions and
-optimize them as much as possible.
-If you feel like it's a good piece of software, I wouldn't mind a tip!
-
-Bitcoin: `1DkfrFvSRqgBnBuxv9BzAz83dqur5zrdTH`
 
 # License
 
