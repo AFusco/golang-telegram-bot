@@ -123,11 +123,6 @@ var (
 	cbackRx = regexp.MustCompile(`^\f(\w+)(\|(.+))?$`)
 )
 
-func (b *Bot) handleCommand(m *Message, cmdName, cmdBot string) bool {
-
-	return false
-}
-
 // Start brings bot into motion by consuming incoming
 // updates (see Bot.Updates channel).
 func (b *Bot) Start() {
@@ -156,114 +151,198 @@ func (b *Bot) Start() {
 	}
 }
 
-func (b *Bot) incomingUpdate(upd *Update) {
-	if upd.Message != nil {
-		m := upd.Message
+// incomingUpdate tries to dispatch the incoming update
+// to the most suitable registered handler
 
-		if m.PinnedMessage != nil {
-			b.handle(OnPinned, m)
+func (b *Bot) incomingMessage(upd *Update) {
+	m := upd.Message
+
+	if m.PinnedMessage != nil {
+		b.handle(OnPinned, m)
+		return
+	}
+
+	// Commands
+	if m.Text != "" {
+		// Filtering malicious messsages
+		if m.Text[0] == '\a' {
 			return
 		}
 
-		// Commands
-		if m.Text != "" {
-			// Filtering malicious messsages
-			if m.Text[0] == '\a' {
+		match := cmdRx.FindAllStringSubmatch(m.Text, -1)
+
+		// Command found - handle and return
+		if match != nil {
+			// Syntax: "</command>@<bot> <payload>"
+			command, botName := match[0][1], match[0][3]
+			m.Payload = match[0][5]
+
+			if botName != "" && !strings.EqualFold(b.Me.Username, botName) {
 				return
 			}
 
-			match := cmdRx.FindAllStringSubmatch(m.Text, -1)
-
-			// Command found - handle and return
-			if match != nil {
-				// Syntax: "</command>@<bot> <payload>"
-				command, botName := match[0][1], match[0][3]
-				m.Payload = match[0][5]
-
-				if botName != "" && !strings.EqualFold(b.Me.Username, botName) {
-					return
-				}
-
-				if b.handle(command, m) {
-					return
-				}
-			}
-
-			// 1:1 satisfaction
-			if b.handle(m.Text, m) {
+			if b.handle(command, m) {
 				return
 			}
+		}
 
-			// OnText
-			b.handle(OnText, m)
+		// 1:1 satisfaction
+		if b.handle(m.Text, m) {
 			return
 		}
 
-		// on media
-		if b.handleMedia(m) {
-			return
-		}
+		// OnText
+		b.handle(OnText, m)
+		return
+	}
 
-		// OnAddedToGroup
-		wasAdded := (m.UserJoined != nil && m.UserJoined.ID == b.Me.ID) ||
-			(m.UsersJoined != nil && isUserInList(b.Me, m.UsersJoined))
-		if m.GroupCreated || m.SuperGroupCreated || wasAdded {
-			b.handle(OnAddedToGroup, m)
-			return
-		}
+	// on media
+	if b.handleMedia(m) {
+		return
+	}
 
-		if m.UserJoined != nil {
+	// OnAddedToGroup
+	wasAdded := (m.UserJoined != nil && m.UserJoined.ID == b.Me.ID) ||
+		(m.UsersJoined != nil && isUserInList(b.Me, m.UsersJoined))
+	if m.GroupCreated || m.SuperGroupCreated || wasAdded {
+		b.handle(OnAddedToGroup, m)
+		return
+	}
+
+	if m.UserJoined != nil {
+		b.handle(OnUserJoined, m)
+		return
+	}
+
+	if m.UsersJoined != nil {
+		for _, user := range m.UsersJoined {
+			m.UserJoined = &user
 			b.handle(OnUserJoined, m)
-			return
 		}
 
-		if m.UsersJoined != nil {
-			for _, user := range m.UsersJoined {
-				m.UserJoined = &user
-				b.handle(OnUserJoined, m)
+		return
+	}
+
+	if m.UserLeft != nil {
+		b.handle(OnUserLeft, m)
+		return
+	}
+
+	if m.NewGroupTitle != "" {
+		b.handle(OnNewGroupTitle, m)
+		return
+	}
+
+	if m.NewGroupPhoto != nil {
+		b.handle(OnNewGroupPhoto, m)
+		return
+	}
+
+	if m.GroupPhotoDeleted {
+		b.handle(OnGroupPhotoDeleted, m)
+		return
+	}
+
+	if m.MigrateTo != 0 {
+		if handler, ok := b.handlers[OnMigration]; ok {
+			if handler, ok := handler.(func(int64, int64)); ok {
+				// i'm not 100% sure that any of the values
+				// won't be cached, so I pass them all in:
+				go func(b *Bot, handler func(int64, int64), from, to int64) {
+					defer b.deferDebug()
+					handler(from, to)
+				}(b, handler, m.MigrateFrom, m.MigrateTo)
+
+			} else {
+				panic("golang-telegram-bot: migration handler is bad")
 			}
-
-			return
 		}
+	}
+}
 
-		if m.UserLeft != nil {
-			b.handle(OnUserLeft, m)
-			return
-		}
+func (b *Bot) incomingCallback(upd *Update) {
+	if upd.Callback.Data != "" {
+		data := upd.Callback.Data
 
-		if m.NewGroupTitle != "" {
-			b.handle(OnNewGroupTitle, m)
-			return
-		}
+		if data[0] == '\f' {
+			match := cbackRx.FindAllStringSubmatch(data, -1)
 
-		if m.NewGroupPhoto != nil {
-			b.handle(OnNewGroupPhoto, m)
-			return
-		}
+			if match != nil {
+				unique, payload := match[0][1], match[0][3]
 
-		if m.GroupPhotoDeleted {
-			b.handle(OnGroupPhotoDeleted, m)
-			return
-		}
+				if handler, ok := b.handlers["\f"+unique]; ok {
+					if handler, ok := handler.(func(*Callback)); ok {
+						upd.Callback.Data = payload
+						// i'm not 100% sure that any of the values
+						// won't be cached, so I pass them all in:
+						go func(b *Bot, handler func(*Callback), c *Callback) {
+							defer b.deferDebug()
+							handler(c)
+						}(b, handler, upd.Callback)
 
-		if m.MigrateTo != 0 {
-			if handler, ok := b.handlers[OnMigration]; ok {
-				if handler, ok := handler.(func(int64, int64)); ok {
-					// i'm not 100% sure that any of the values
-					// won't be cached, so I pass them all in:
-					go func(b *Bot, handler func(int64, int64), from, to int64) {
-						defer b.deferDebug()
-						handler(from, to)
-					}(b, handler, m.MigrateFrom, m.MigrateTo)
-
-				} else {
-					panic("golang-telegram-bot: migration handler is bad")
+						return
+					}
 				}
+
 			}
-
-			return
 		}
+	}
 
+	if handler, ok := b.handlers[OnCallback]; ok {
+		if handler, ok := handler.(func(*Callback)); ok {
+			// i'm not 100% sure that any of the values
+			// won't be cached, so I pass them all in:
+			go func(b *Bot, handler func(*Callback), c *Callback) {
+				defer b.deferDebug()
+				handler(c)
+			}(b, handler, upd.Callback)
+
+		} else {
+			panic("golang-telegram-bot: callback handler is bad")
+		}
+	}
+	return
+
+}
+
+func (b *Bot) incomingQuery(upd *Update) {
+	if handler, ok := b.handlers[OnQuery]; ok {
+		if handler, ok := handler.(func(*Query)); ok {
+			// i'm not 100% sure that any of the values
+			// won't be cached, so I pass them all in:
+			go func(b *Bot, handler func(*Query), q *Query) {
+				defer b.deferDebug()
+				handler(q)
+			}(b, handler, upd.Query)
+
+		} else {
+			panic("golang-telegram-bot: query handler is bad")
+		}
+	}
+}
+
+func (b *Bot) incomingChosenInlineResult(upd *Update) {
+	if handler, ok := b.handlers[OnChosenInlineResult]; ok {
+		if handler, ok := handler.(func(*ChosenInlineResult)); ok {
+			// i'm not 100% sure that any of the values
+			// won't be cached, so I pass them all in:
+			go func(b *Bot, handler func(*ChosenInlineResult),
+				r *ChosenInlineResult) {
+				defer b.deferDebug()
+				handler(r)
+			}(b, handler, upd.ChosenInlineResult)
+
+		} else {
+			panic("golang-telegram-bot: chosen inline result handler is bad")
+		}
+	}
+}
+
+func (b *Bot) incomingUpdate(upd *Update) {
+
+	// Update is a message
+	if upd.Message != nil {
+		b.incomingMessage(upd)
 		return
 	}
 
@@ -283,81 +362,17 @@ func (b *Bot) incomingUpdate(upd *Update) {
 	}
 
 	if upd.Callback != nil {
-		if upd.Callback.Data != "" {
-			data := upd.Callback.Data
-
-			if data[0] == '\f' {
-				match := cbackRx.FindAllStringSubmatch(data, -1)
-
-				if match != nil {
-					unique, payload := match[0][1], match[0][3]
-
-					if handler, ok := b.handlers["\f"+unique]; ok {
-						if handler, ok := handler.(func(*Callback)); ok {
-							upd.Callback.Data = payload
-							// i'm not 100% sure that any of the values
-							// won't be cached, so I pass them all in:
-							go func(b *Bot, handler func(*Callback), c *Callback) {
-								defer b.deferDebug()
-								handler(c)
-							}(b, handler, upd.Callback)
-
-							return
-						}
-					}
-
-				}
-			}
-		}
-
-		if handler, ok := b.handlers[OnCallback]; ok {
-			if handler, ok := handler.(func(*Callback)); ok {
-				// i'm not 100% sure that any of the values
-				// won't be cached, so I pass them all in:
-				go func(b *Bot, handler func(*Callback), c *Callback) {
-					defer b.deferDebug()
-					handler(c)
-				}(b, handler, upd.Callback)
-
-			} else {
-				panic("golang-telegram-bot: callback handler is bad")
-			}
-		}
+		b.incomingCallback(upd)
 		return
 	}
 
 	if upd.Query != nil {
-		if handler, ok := b.handlers[OnQuery]; ok {
-			if handler, ok := handler.(func(*Query)); ok {
-				// i'm not 100% sure that any of the values
-				// won't be cached, so I pass them all in:
-				go func(b *Bot, handler func(*Query), q *Query) {
-					defer b.deferDebug()
-					handler(q)
-				}(b, handler, upd.Query)
-
-			} else {
-				panic("golang-telegram-bot: query handler is bad")
-			}
-		}
+		b.incomingQuery(upd)
 		return
 	}
 
 	if upd.ChosenInlineResult != nil {
-		if handler, ok := b.handlers[OnChosenInlineResult]; ok {
-			if handler, ok := handler.(func(*ChosenInlineResult)); ok {
-				// i'm not 100% sure that any of the values
-				// won't be cached, so I pass them all in:
-				go func(b *Bot, handler func(*ChosenInlineResult),
-					r *ChosenInlineResult) {
-					defer b.deferDebug()
-					handler(r)
-				}(b, handler, upd.ChosenInlineResult)
-
-			} else {
-				panic("golang-telegram-bot: chosen inline result handler is bad")
-			}
-		}
+		b.incomingChosenInlineResult(upd)
 		return
 	}
 }
@@ -368,10 +383,10 @@ func (b *Bot) handle(end string, m *Message) bool {
 		return false
 	}
 
-	if handler, ok := handler.(func(*Message)); ok {
+	if handler, ok := handler.(UpdateHandlerFunc); ok {
 		// i'm not 100% sure that any of the values
 		// won't be cached, so I pass them all in:
-		go func(b *Bot, handler func(*Message), m *Message) {
+		go func(b *Bot, handlerFunc UpdateHandlerFunc, m *Message) {
 			defer b.deferDebug()
 			handler(m)
 		}(b, handler, m)
