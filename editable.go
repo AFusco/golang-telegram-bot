@@ -1,4 +1,4 @@
-package telebot
+package gtb
 
 // Editable is an interface for all objects that
 // provide "message signature", a pair of 32-bit

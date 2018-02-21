@@ -1,4 +1,4 @@
-package telebot
+package gtb
 
 // Sticker object represents a WebP image, so-called sticker.
 type Sticker struct {

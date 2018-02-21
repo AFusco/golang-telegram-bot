@@ -1,4 +1,4 @@
-package telebot
+package gtb
 
 import (
 	"encoding/json"
@@ -137,7 +137,7 @@ func extractOptions(how []interface{}) *SendOptions {
 				}
 				opts.ReplyMarkup.OneTimeKeyboard = true
 			default:
-				panic("telebot: unsupported flag-option")
+				panic("golang-telegram-bot: unsupported flag-option")
 			}
 
 		case ParseMode:
@@ -147,7 +147,7 @@ func extractOptions(how []interface{}) *SendOptions {
 			opts.ParseMode = opt
 
 		default:
-			panic("telebot: unsupported send-option")
+			panic("golang-telegram-bot: unsupported send-option")
 		}
 	}
 

@@ -1,4 +1,4 @@
-package telebot
+package gtb
 
 // Filter is some thing that does filtering for
 // incoming updates.
@@ -59,7 +59,7 @@ func (c *Chain) Add(filter interface{}) {
 	case func(*Update) bool:
 		break
 	default:
-		panic("telebot: unsupported filter type")
+		panic("golang-telegram-bot: unsupported filter type")
 	}
 
 	c.Filters = append(c.Filters, filter)

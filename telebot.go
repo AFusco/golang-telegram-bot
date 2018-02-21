@@ -24,7 +24,7 @@
 //			b.Start()
 //		}
 //
-package telebot
+package gtb
 
 // These are one of the possible events Handle() can deal with.
 //

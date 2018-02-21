@@ -1,4 +1,4 @@
-package telebot
+package gtb
 
 // Option is a shorcut flag type for certain message features
 // (so-called options). It means that instead of passing

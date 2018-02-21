@@ -1,4 +1,4 @@
-package telebot
+package gtb
 
 import (
 	"time"
@@ -103,4 +103,20 @@ func (p *LongPoller) Poll(b *Bot, dest chan Update, stop chan struct{}) {
 			dest <- update
 		}
 	}
+}
+
+type WebhookPoller struct {
+	Endpoint string
+	Port     string
+}
+
+func (p *WebhookPoller) Poll(b *Bot, dest chan Update, stop chan struct{}) {
+	go func(stop chan struct{}) {
+		<-stop
+		close(stop)
+	}(stop)
+
+	http.HandleFunc(p.Endpoint, func(w http.ResponseWriter, r *http.Request) {
+
+	})
 }

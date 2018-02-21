@@ -1,7 +1,7 @@
 
 # Telebot
 
-golang-telegram-bot is a fork of [Telebot](https://github.com/tucnak/telebot)
+golang-telegram-bot is a fork of [Telebot](https://github.com/afusco/golang-telegram-bot)
 that aims to be more flexible and with webhook support.
 
 >"I never knew creating Telegram bots could be so _sexy_!"
@@ -254,7 +254,7 @@ b.Send(user, "text", tb.Silent, tb.NoPreview)
 ```
 
 Full list of supported option-flags you can find
-[here](https://github.com/tucnak/telebot/blob/v2/options.go#L9).
+[here](https://github.com/afusco/golang-telegram-bot/blob/v2/options.go#L9).
 
 ## Editable
 If you want to edit some existing message, you don't really need to store the
@@ -282,7 +282,7 @@ type Editable interface {
 ```
 
 For example, `Message` type is Editable. Here is the implementation of `StoredMessage`
-type, provided by telebot:
+type, provided by golang-telegram-bot:
 ```go
 // StoredMessage is an example struct suitable for being
 // stored in the database as-is or being embedded into
@@ -423,7 +423,7 @@ of `QueryResponse`.
 # Contributing
 
 1. Fork it
-2. Clone it: `git clone https://github.com/tucnak/telebot`
+2. Clone it: `git clone https://github.com/afusco/golang-telegram-bot`
 3. Create your feature branch: `git checkout -b my-new-feature`
 4. Make changes and add them: `git add .`
 5. Commit: `git commit -m 'Add some feature'`
