@@ -247,12 +247,12 @@ func (b *Bot) incomingMessage(upd *Update) {
 
 	if m.MigrateTo != 0 {
 		if handler, ok := b.handlers[OnMigration]; ok {
-			if handler, ok := handler.(UpdateHandlerFunc); ok {
+			if handler, ok := handler.(MigrationHandlerFunc); ok {
 				// i'm not 100% sure that any of the values
 				// won't be cached, so I pass them all in:
-				go func(b *Bot, handler UpdateHandlerFunc, from, to int64) {
+				go func(b *Bot, handler MigrationHandlerFunc, from, to int64) {
 					defer b.deferDebug()
-					handler(b, upd)
+					handler(b, from, to)
 				}(b, handler, m.MigrateFrom, m.MigrateTo)
 
 			} else {
@@ -384,8 +384,6 @@ func (b *Bot) handle(end string, m *Message) bool {
 	if !ok {
 		return false
 	}
-
-	fmt.Println(m.Text, end)
 
 	if handler, ok := handler.(MessageHandlerFunc); ok {
 		// i'm not 100% sure that any of the values
