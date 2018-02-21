@@ -8,7 +8,7 @@ type UpdateHandler interface {
 type UpdateHandlerFunc func(*Bot, *Update)
 
 func (f UpdateHandlerFunc) ServeUpdate(bot *Bot, upd *Update) {
-	return f(bot, upd)
+	f(bot, upd)
 }
 
 // MessageHandler
@@ -18,11 +18,11 @@ type MessageHandler interface {
 type MessageHandlerFunc func(*Bot, *Message)
 
 func (f MessageHandlerFunc) ServeMessage(bot *Bot, msg *Message) {
-	return f(bot, msg)
+	f(bot, msg)
 }
 func (f MessageHandlerFunc) ServeUpdate(bot *Bot, upd *Update) {
 	if upd.Message != nil {
-		return f(bot, upd.Message)
+		f(bot, upd.Message)
 	} else {
 		//TODO handle better
 		panic("Message handler cannot handle nil message")
@@ -35,24 +35,15 @@ type MigrationHandler interface {
 type MigrationHandlerFunc func(*Bot, int64, int64)
 
 func (f MigrationHandlerFunc) ServeMigration(bot *Bot, from, to int64) {
-	return f(bot, from, to)
+	f(bot, from, to)
 }
 
-func (f MessageHandlerFunc) ServeMessage(bot *Bot, msg *Message) {
+func (f MigrationHandlerFunc) ServeMessage(bot *Bot, msg *Message) {
 	if msg.MigrateTo != 0 {
-		return f(bot, msg.MigrateFrom, msg.MigrateTo)
+		f(bot, msg.MigrateFrom, msg.MigrateTo)
 	} else {
 		//TODO handle better
 		panic("Message handler cannot handle nil message")
-	}
-}
-
-func (f MigrationHandlerFunc) ServeUpdate(bot *Bot, upd *Update) {
-	if upd.Message != nil {
-		return f.ServeMessage(bot, upd.Message)
-	} else {
-		//TODO
-		panic("migration handler")
 	}
 }
 
@@ -63,11 +54,11 @@ type CallbackHandler interface {
 type CallbackHandlerFunc func(*Bot, *Callback)
 
 func (f CallbackHandlerFunc) ServeCallback(bot *Bot, cb *Callback) {
-	return f(bot, cb)
+	f(bot, cb)
 }
 func (f CallbackHandlerFunc) ServeUpdate(bot *Bot, upd *Update) {
 	if upd.Callback != nil {
-		return f(bot, upd.Callback)
+		f(bot, upd.Callback)
 	} else {
 		//TODO handle better
 		panic("Callback handler cannot handle nil callback")
@@ -81,11 +72,11 @@ type QueryHandler interface {
 type QueryHandlerFunc func(*Bot, *Query)
 
 func (f QueryHandlerFunc) ServeQuery(bot *Bot, q *Query) {
-	return f(bot, q)
+	f(bot, q)
 }
 func (f QueryHandlerFunc) ServeUpdate(bot *Bot, upd *Update) {
 	if upd.Query != nil {
-		return f(bot, upd.Query)
+		f(bot, upd.Query)
 	} else {
 		//TODO handle better
 		panic("Callback handler cannot handle nil callback")
@@ -98,12 +89,12 @@ type ChosenInlineResultHandler interface {
 }
 type ChosenInlineResultHandlerFunc func(*Bot, *ChosenInlineResult)
 
-func (f ChosenInlineResultHandlerFunc) ServeChosenInlineResult(bot *Bot, in_res ChosenInlineResult) {
-	return f(bot, in_res)
+func (f ChosenInlineResultHandlerFunc) ServeChosenInlineResult(bot *Bot, in_res *ChosenInlineResult) {
+	f(bot, in_res)
 }
 func (f ChosenInlineResultHandlerFunc) ServeUpdate(bot *Bot, upd *Update) {
 	if upd.ChosenInlineResult != nil {
-		return f(bot, upd.ChosenInlineResult)
+		f(bot, upd.ChosenInlineResult)
 	} else {
 		//TODO handle better
 		panic("ChosenInlineResult handler cannot handle nil chosen inline result")
