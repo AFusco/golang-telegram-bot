@@ -29,6 +29,33 @@ func (f MessageHandlerFunc) ServeUpdate(bot *Bot, upd *Update) {
 	}
 }
 
+type MigrationHandler interface {
+	ServeMigration(*Bot, int64, int64)
+}
+type MigrationHandlerFunc func(*Bot, int64, int64)
+
+func (f MigrationHandlerFunc) ServeMigration(bot *Bot, from, to int64) {
+	return f(bot, from, to)
+}
+
+func (f MessageHandlerFunc) ServeMessage(bot *Bot, msg *Message) {
+	if msg.MigrateTo != 0 {
+		return f(bot, msg.MigrateFrom, msg.MigrateTo)
+	} else {
+		//TODO handle better
+		panic("Message handler cannot handle nil message")
+	}
+}
+
+func (f MigrationHandlerFunc) ServeUpdate(bot *Bot, upd *Update) {
+	if upd.Message != nil {
+		return f.ServeMessage(bot, upd.Message)
+	} else {
+		//TODO
+		panic("migration handler")
+	}
+}
+
 // Callback Handler
 type CallbackHandler interface {
 	ServeCallback(*Bot, *Callback)
