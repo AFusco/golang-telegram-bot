@@ -1,4 +1,4 @@
-package telebot
+package gtb
 
 import (
 	"encoding/json"
@@ -108,13 +108,13 @@ type ChosenInlineResult struct {
 //     b.handle(&inlineButton, func (c *tb.Callback) {})
 //
 func (b *Bot) Handle(endpoint interface{}, handler interface{}) {
-	switch end := endpoint.(type) {
+	switch endType := endpoint.(type) {
 	case string:
-		b.handlers[end] = handler
+		b.handlers[endType] = handler
 	case CallbackEndpoint:
-		b.handlers[end.CallbackUnique()] = handler
+		b.handlers[endType.CallbackUnique()] = handler
 	default:
-		panic("telebot: unsupported endpoint")
+		panic("golang-telegram-bot: unsupported endpoint")
 	}
 }
 
@@ -132,7 +132,7 @@ func (b *Bot) handleCommand(m *Message, cmdName, cmdBot string) bool {
 // updates (see Bot.Updates channel).
 func (b *Bot) Start() {
 	if b.Poller == nil {
-		panic("telebot: can't start without a poller")
+		panic("golang-telegram-bot: can't start without a poller")
 	}
 
 	stopPoller := make(chan struct{})
@@ -257,7 +257,7 @@ func (b *Bot) incomingUpdate(upd *Update) {
 					}(b, handler, m.MigrateFrom, m.MigrateTo)
 
 				} else {
-					panic("telebot: migration handler is bad")
+					panic("golang-telegram-bot: migration handler is bad")
 				}
 			}
 
@@ -320,7 +320,7 @@ func (b *Bot) incomingUpdate(upd *Update) {
 				}(b, handler, upd.Callback)
 
 			} else {
-				panic("telebot: callback handler is bad")
+				panic("golang-telegram-bot: callback handler is bad")
 			}
 		}
 		return
@@ -337,7 +337,7 @@ func (b *Bot) incomingUpdate(upd *Update) {
 				}(b, handler, upd.Query)
 
 			} else {
-				panic("telebot: query handler is bad")
+				panic("golang-telegram-bot: query handler is bad")
 			}
 		}
 		return
@@ -355,7 +355,7 @@ func (b *Bot) incomingUpdate(upd *Update) {
 				}(b, handler, upd.ChosenInlineResult)
 
 			} else {
-				panic("telebot: chosen inline result handler is bad")
+				panic("golang-telegram-bot: chosen inline result handler is bad")
 			}
 		}
 		return
@@ -459,7 +459,7 @@ func (b *Bot) Send(to Recipient, what interface{}, options ...interface{}) (*Mes
 	case Sendable:
 		return object.Send(b, to, sendOpts)
 	default:
-		panic("telebot: unsupported sendable")
+		panic("golang-telegram-bot: unsupported sendable")
 	}
 }
 
@@ -488,7 +488,7 @@ func (b *Bot) SendAlbum(to Recipient, a Album, options ...interface{}) ([]Messag
 			mediaType = "video"
 			caption = y.Caption
 		default:
-			return nil, errors.Errorf("telebot: album entry #%d is not valid", i)
+			return nil, errors.Errorf("golang-telegram-bot: album entry #%d is not valid", i)
 		}
 
 		if f.InCloud() {
@@ -500,7 +500,7 @@ func (b *Bot) SendAlbum(to Recipient, a Album, options ...interface{}) ([]Messag
 			files[strconv.Itoa(i)] = f.FileLocal
 		} else {
 			return nil, errors.Errorf(
-				"telebot: album entry #%d doesn't exist anywhere", i)
+				"golang-telegram-bot: album entry #%d doesn't exist anywhere", i)
 		}
 
 		jsonRepr, _ := json.Marshal(map[string]string{
@@ -614,7 +614,7 @@ func (b *Bot) Edit(message Editable, what interface{}, options ...interface{}) (
 		params["latitude"] = fmt.Sprintf("%f", v.Lat)
 		params["longitude"] = fmt.Sprintf("%f", v.Lng)
 	default:
-		panic("telebot: unsupported what argument")
+		panic("golang-telegram-bot: unsupported what argument")
 	}
 
 	// if inline message
