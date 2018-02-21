@@ -94,8 +94,11 @@ type ChosenInlineResult struct {
 	Location *Location `json:"location,omitempty"`
 }
 
-// Handle lets you set the handler for some command name or
+// Handle lets you register handler for some command name or
 // one of the supported endpoints.
+//
+// If the handler for a certain enpoint is already registered,
+// it will be overwritten.
 //
 // Example:
 //
@@ -107,7 +110,7 @@ type ChosenInlineResult struct {
 //     // inline buttons.
 //     b.handle(&inlineButton, func (c *tb.Callback) {})
 //
-func (b *Bot) Handle(endpoint interface{}, handler interface{}) {
+func (b *Bot) Handle(endpoint interface{}, handler UpdateHandlerFunc) {
 	switch endType := endpoint.(type) {
 	case string:
 		b.handlers[endType] = handler
@@ -153,7 +156,6 @@ func (b *Bot) Start() {
 
 // incomingUpdate tries to dispatch the incoming update
 // to the most suitable registered handler
-
 func (b *Bot) incomingMessage(upd *Update) {
 	m := upd.Message
 
@@ -164,7 +166,7 @@ func (b *Bot) incomingMessage(upd *Update) {
 
 	// Commands
 	if m.Text != "" {
-		// Filtering malicious messsages
+		// Filtering malicious messages
 		if m.Text[0] == '\a' {
 			return
 		}
@@ -245,12 +247,12 @@ func (b *Bot) incomingMessage(upd *Update) {
 
 	if m.MigrateTo != 0 {
 		if handler, ok := b.handlers[OnMigration]; ok {
-			if handler, ok := handler.(func(int64, int64)); ok {
+			if handler, ok := handler.(UpdateHandlerFunc); ok {
 				// i'm not 100% sure that any of the values
 				// won't be cached, so I pass them all in:
-				go func(b *Bot, handler func(int64, int64), from, to int64) {
+				go func(b *Bot, handler UpdateHandlerFunc, from, to int64) {
 					defer b.deferDebug()
-					handler(from, to)
+					handler(b, upd)
 				}(b, handler, m.MigrateFrom, m.MigrateTo)
 
 			} else {
@@ -271,13 +273,13 @@ func (b *Bot) incomingCallback(upd *Update) {
 				unique, payload := match[0][1], match[0][3]
 
 				if handler, ok := b.handlers["\f"+unique]; ok {
-					if handler, ok := handler.(func(*Callback)); ok {
+					if handler, ok := handler.(CallbackHandlerFunc); ok {
 						upd.Callback.Data = payload
 						// i'm not 100% sure that any of the values
 						// won't be cached, so I pass them all in:
-						go func(b *Bot, handler func(*Callback), c *Callback) {
+						go func(b *Bot, handler CallbackHandlerFunc, c *Callback) {
 							defer b.deferDebug()
-							handler(c)
+							handler(b, c)
 						}(b, handler, upd.Callback)
 
 						return
@@ -289,12 +291,12 @@ func (b *Bot) incomingCallback(upd *Update) {
 	}
 
 	if handler, ok := b.handlers[OnCallback]; ok {
-		if handler, ok := handler.(func(*Callback)); ok {
+		if handler, ok := handler.(CallbackHandlerFunc); ok {
 			// i'm not 100% sure that any of the values
 			// won't be cached, so I pass them all in:
-			go func(b *Bot, handler func(*Callback), c *Callback) {
+			go func(b *Bot, handler CallbackHandlerFunc, c *Callback) {
 				defer b.deferDebug()
-				handler(c)
+				handler(b, c)
 			}(b, handler, upd.Callback)
 
 		} else {
@@ -323,13 +325,13 @@ func (b *Bot) incomingQuery(upd *Update) {
 
 func (b *Bot) incomingChosenInlineResult(upd *Update) {
 	if handler, ok := b.handlers[OnChosenInlineResult]; ok {
-		if handler, ok := handler.(func(*ChosenInlineResult)); ok {
+		if handler, ok := handler.(ChosenInlineResultHandlerFunc); ok {
 			// i'm not 100% sure that any of the values
 			// won't be cached, so I pass them all in:
-			go func(b *Bot, handler func(*ChosenInlineResult),
+			go func(b *Bot, handler ChosenInlineResultHandlerFunc,
 				r *ChosenInlineResult) {
 				defer b.deferDebug()
-				handler(r)
+				handler(b, r)
 			}(b, handler, upd.ChosenInlineResult)
 
 		} else {
@@ -383,12 +385,14 @@ func (b *Bot) handle(end string, m *Message) bool {
 		return false
 	}
 
-	if handler, ok := handler.(UpdateHandlerFunc); ok {
+	fmt.Println(m.Text, end)
+
+	if handler, ok := handler.(MessageHandlerFunc); ok {
 		// i'm not 100% sure that any of the values
 		// won't be cached, so I pass them all in:
-		go func(b *Bot, handlerFunc UpdateHandlerFunc, m *Message) {
+		go func(b *Bot, handlerFunc MessageHandlerFunc, m *Message) {
 			defer b.deferDebug()
-			handler(m)
+			handler(b, m)
 		}(b, handler, m)
 
 		return true

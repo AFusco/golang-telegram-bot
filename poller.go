@@ -116,7 +116,7 @@ func (p *WebhookPoller) Poll(b *Bot, dest chan Update, stop chan struct{}) {
 		close(stop)
 	}(stop)
 
-	http.HandleFunc(p.Endpoint, func(w http.ResponseWriter, r *http.Request) {
+	//	http.HandleFunc(p.Endpoint, func(w http.ResponseWriter, r *http.Request) {
 
-	})
+	//	})
 }
